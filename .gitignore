@@ -1,0 +1,6 @@
+node_modules/
+servers/pdf-maker/node_modules/
+.DS_Store
+*.pdf
+.env
+.env.*

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "pdf-maker",
+  "displayName": "The PDF Maker",
+  "version": "1.0.0",
+  "description": "Call THE PDF MAKER API from Claude Code: list templates, read placeholders, and generate PDFs from JSON or Airtable records.",
+  "author": {
+    "name": "The PDF Maker",
+    "url": "https://thepdfmaker.com"
+  },
+  "homepage": "https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro",
+  "license": "MIT",
+  "keywords": ["pdf", "pdf-maker", "documents", "templates", "api"]
+}

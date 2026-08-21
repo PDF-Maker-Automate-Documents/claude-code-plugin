@@ -1,0 +1,73 @@
+{
+  "name": "THE PDF MAKER API",
+  "docs": "https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro",
+  "baseUrl": "https://api.thepdfmaker.com",
+  "auth": {
+    "type": "apiKey",
+    "in": "header",
+    "name": "x-api-key",
+    "env": "PDF_MAKER_API_KEY"
+  },
+  "requests": [
+    {
+      "id": "list_templates",
+      "name": "templates",
+      "method": "GET",
+      "path": "/templates",
+      "description": "Retrieve all templates from the authenticated account.",
+      "headers": ["x-api-key"]
+    },
+    {
+      "id": "get_template_placeholders",
+      "name": "template placeholders",
+      "method": "GET",
+      "path": "/templates/placeholders",
+      "description": "Retrieve all placeholders from a template.",
+      "headers": ["x-api-key"],
+      "query": {
+        "templateId": {
+          "required": true,
+          "description": "Template ID whose placeholders should be listed."
+        }
+      }
+    },
+    {
+      "id": "create_pdf",
+      "name": "create pdf",
+      "method": "POST",
+      "path": "/pdf",
+      "description": "Create a PDF from a template by filling placeholders with JSON data. The response typically includes a URL to the generated PDF.",
+      "headers": ["x-api-key"],
+      "body": {
+        "templateId": {
+          "required": true,
+          "type": "string",
+          "description": "ID of the template to render."
+        },
+        "pdfFileName": {
+          "required": false,
+          "type": "string",
+          "description": "Optional output file name."
+        },
+        "data": {
+          "required": true,
+          "type": "object",
+          "description": "Placeholder values. Keys must match the template placeholders."
+        }
+      },
+      "exampleBody": {
+        "templateId": "YOUR_TEMPLATE_ID",
+        "pdfFileName": "pdf-file-name",
+        "data": {}
+      }
+    },
+    {
+      "id": "auth_check",
+      "name": "Auth Check",
+      "method": "GET",
+      "path": "/",
+      "description": "Verify that the API key is valid.",
+      "headers": ["x-api-key"]
+    }
+  ]
+}

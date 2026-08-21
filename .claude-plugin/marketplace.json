@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "pdf-maker",
+  "description": "Claude Code plugins for The PDF Maker API",
+  "owner": {
+    "name": "The PDF Maker",
+    "url": "https://thepdfmaker.com"
+  },
+  "plugins": [
+    {
+      "name": "pdf-maker",
+      "source": "./",
+      "description": "Call THE PDF MAKER API from Claude Code: list templates, read placeholders, and generate PDFs from JSON or Airtable records."
+    }
+  ]
+}

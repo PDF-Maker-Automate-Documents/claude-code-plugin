@@ -1,12 +1,12 @@
 # The PDF Maker — Claude Code plugin
 
-Lets Claude Code call [THE PDF MAKER API](https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro) as native tools: list templates, read placeholders, generate PDFs from JSON, and generate PDFs from Airtable records.
+Lets Claude Code call [THE PDF MAKER API](https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro) as native tools: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.
 
 ## Requirements
 
 - [Claude Code](https://code.claude.com/docs/en/quickstart)
 - Node.js 18+
-- A [PDF Maker](https://app.thepdfmaker.com/) account and API key (Automate / API panel)
+- A [PDF Maker](https://app.thepdfmaker.com/) account and API key from [Settings → API Key](https://app.thepdfmaker.com/settings?tab=api-key)
 
 ## Setup
 
@@ -14,7 +14,7 @@ Lets Claude Code call [THE PDF MAKER API](https://documenter.getpostman.com/view
 cd servers/pdf-maker && npm install
 ```
 
-Export your API key (do not commit it):
+After login, open [Settings → API Key](https://app.thepdfmaker.com/settings?tab=api-key), copy your key, then export it (do not commit it):
 
 ```bash
 export PDF_MAKER_API_KEY="your-api-key"
@@ -41,29 +41,39 @@ claude plugin marketplace add .
 1. In Claude Code, run `/mcp`. The `api` server from this plugin should show as connected.
 2. Ask Claude to check the API key, or say: "List my PDF Maker templates."
 3. Generate a document: "Create a PDF from template `<templateId>` with this data: …"
+4. Or create a template: "Create an HTML invoice template, then generate a PDF with this data: …"
 
 If the server fails to start, confirm `npm install` ran in `servers/pdf-maker` and that `PDF_MAKER_API_KEY` is set in the same environment that launches Claude Code.
+
+In `/mcp`, the working server is named `plugin:pdf-maker:api`. If you opened this repo as the project, you may also see a project `.mcp.json` warning about `CLAUDE_PLUGIN_ROOT` — that is harmless when the plugin entry shows connected. Prefer testing with `claude --plugin-dir .` from this folder, or install the plugin and work from another project.
 
 ## Tools
 
 | Tool | API |
 | --- | --- |
 | `list_templates` | `GET /templates` |
+| `create_html_template` | `POST /templates/html` |
 | `get_template_placeholders` | `GET /templates/placeholders` |
 | `create_pdf` | `POST /pdf` |
 | `auth_check` | `GET /` |
-| `create_airtable_pdf` | `POST /airtable/pdf` |
-| `create_airtable_pdf_get` | `GET /airtable/pdf` |
+| `get_plan` | `GET /plan` |
 | `pdf_maker_request` | any path on `https://api.thepdfmaker.com` |
 
 Auth header: `x-api-key`. Base URL: `https://api.thepdfmaker.com`.
 
 ## Template setup
 
-1. In The PDF Maker dashboard, create a template with **API** as the data source.
+**Option A — API (Claude)**
+
+1. Ask Claude to create an HTML template with Nunjucks placeholders (`{{ field }}`, loops, etc.).
+2. Use the returned `template.id` with `create_pdf` and your JSON data.
+3. Open the same template later in the dashboard WYSIWYG editor if you want to edit visually.
+
+**Option B — Dashboard**
+
+1. In The PDF Maker dashboard, create a template with **API** as the data source (WYSIWYG or Google Doc).
 2. Add placeholders where values should be filled.
 3. Copy the template ID and the sample request body from Automate.
 4. Ask Claude to generate the PDF with that ID and your data.
 
 Docs: https://the-pdf-maker.tawk.help/article/how-to-create-professional-pdf-documents-using-pdf-maker-api
-# claude-code-plugin

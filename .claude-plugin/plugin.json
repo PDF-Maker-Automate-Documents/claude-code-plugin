@@ -3,7 +3,7 @@
   "name": "pdf-maker",
   "displayName": "The PDF Maker",
   "version": "1.0.0",
-  "description": "Call THE PDF MAKER API from Claude Code: list templates, read placeholders, and generate PDFs from JSON or Airtable records.",
+  "description": "Call THE PDF MAKER API from Claude Code: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.",
   "author": {
     "name": "The PDF Maker",
     "url": "https://thepdfmaker.com"

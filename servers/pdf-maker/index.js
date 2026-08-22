@@ -22,7 +22,7 @@ function getApiKey() {
   const key = process.env.PDF_MAKER_API_KEY?.trim();
   if (!key) {
     throw new Error(
-      "PDF_MAKER_API_KEY is not set. Copy your API key from The PDF Maker dashboard (Automate / API panel) and export it in the environment before starting Claude Code."
+      "PDF_MAKER_API_KEY is not set. Copy your API key from The PDF Maker dashboard Settings → API Key (https://app.thepdfmaker.com/settings?tab=api-key) and export it in the environment before starting Claude Code."
     );
   }
   return key;
@@ -199,6 +199,72 @@ server.tool(
 );
 
 server.tool(
+  "create_html_template",
+  "Create a WYSIWYG/HTML template via POST /templates/html. Use SunEditor-compatible HTML with Nunjucks placeholders ({{ field }}, {% for %}). Returns templateId for get_template_placeholders and create_pdf.",
+  {
+    name: z.string().min(1).describe("Display name for the new template."),
+    bodyHtml: z
+      .string()
+      .min(1)
+      .describe(
+        "Main document HTML with Nunjucks placeholders. Prefer SunEditor table wrappers (figure.se-flex-component > table.se-table-layout-auto) and show-only-in-editor rows for {% for %}/{% endfor %}."
+      ),
+    headerHtml: z
+      .string()
+      .optional()
+      .describe("Optional page header HTML (inline styles only)."),
+    footerHtml: z
+      .string()
+      .optional()
+      .describe("Optional page footer HTML (inline styles only)."),
+    css: z.string().optional().describe("Optional CSS for the body document."),
+    settings: z
+      .record(z.any())
+      .optional()
+      .describe(
+        "Optional page settings. Keys: pageSize (Letter|Legal|Tabloid|Ledger|A0-A6|Custom, default A4), orientation (portrait|landscape), customWidth/customHeight (e.g. 210mm when pageSize=Custom), marginTop/Right/Bottom/Left (numbers, default 20), marginUnit (mm), printBackground (boolean, default true), displayHeaderFooter (boolean, default true), textDirection (ltr|rtl)."
+      ),
+    sampleData: z
+      .union([z.record(z.any()), z.string()])
+      .optional()
+      .describe(
+        "Sample JSON for preview/validation as an object or JSON string. Keys should match placeholders in bodyHtml."
+      ),
+    usedIn: z
+      .string()
+      .optional()
+      .describe("Optional short note for internal analytics (API source purpose)."),
+  },
+  async ({ name, bodyHtml, headerHtml, footerHtml, css, settings, sampleData, usedIn }) => {
+    let parsedSampleData;
+    try {
+      parsedSampleData =
+        sampleData === undefined ? undefined : parseData(sampleData);
+    } catch (err) {
+      return errorResult(
+        new Error(
+          `sampleData is not valid JSON: ${err instanceof Error ? err.message : String(err)}`
+        )
+      );
+    }
+
+    const body = { name, bodyHtml };
+    if (headerHtml !== undefined) body.headerHtml = headerHtml;
+    if (footerHtml !== undefined) body.footerHtml = footerHtml;
+    if (css !== undefined) body.css = css;
+    if (settings !== undefined) body.settings = settings;
+    if (parsedSampleData !== undefined) body.sampleData = parsedSampleData;
+    if (usedIn !== undefined) body.usedIn = usedIn;
+
+    return callApi({
+      method: "POST",
+      path: "/templates/html",
+      body,
+    });
+  }
+);
+
+server.tool(
   "get_template_placeholders",
   "List placeholders for a PDF Maker template (GET /templates/placeholders). Use this before create_pdf so data keys match the template.",
   {
@@ -255,55 +321,15 @@ server.tool(
 );
 
 server.tool(
-  "create_airtable_pdf",
-  "Generate a PDF from an Airtable record (POST /airtable/pdf). Prefer this over the GET variant so the API key stays in the header.",
-  {
-    templateId: z.string().min(1).describe("Template ID to render."),
-    recordId: z.string().min(1).describe("Airtable record ID (starts with rec)."),
-    outputPath: z
-      .string()
-      .optional()
-      .describe("If the API returns PDF bytes or a download URL, save the file at this workspace path."),
-  },
-  async ({ templateId, recordId, outputPath }) =>
-    callApi({
-      method: "POST",
-      path: "/airtable/pdf",
-      body: { templateId, recordId },
-      outputPath,
-    })
-);
-
-server.tool(
-  "create_airtable_pdf_get",
-  "Generate a PDF from an Airtable record via GET /airtable/pdf. The API key is sent as the apiKey query parameter; prefer create_airtable_pdf (POST) when possible.",
-  {
-    templateId: z.string().min(1).describe("Template ID to render."),
-    recordId: z.string().min(1).describe("Airtable record ID (starts with rec)."),
-    outputPath: z
-      .string()
-      .optional()
-      .describe("If the API returns PDF bytes or a download URL, save the file at this workspace path."),
-  },
-  async ({ templateId, recordId, outputPath }) => {
-    let apiKey;
-    try {
-      apiKey = getApiKey();
-    } catch (err) {
-      return errorResult(err);
-    }
-    return callApi({
-      method: "GET",
-      path: "/airtable/pdf",
-      query: { apiKey, templateId, recordId },
-      outputPath,
-    });
-  }
+  "get_plan",
+  "Get the authenticated account's current plan and usage quotas for PDFs and templates (GET /plan). Use when create_pdf or create_html_template fails with a plan/quota error.",
+  {},
+  async () => callApi({ method: "GET", path: "/plan" })
 );
 
 server.tool(
   "pdf_maker_request",
-  "Authenticated request to any THE PDF MAKER API path under https://api.thepdfmaker.com. Use dedicated tools when they exist.",
+  "Authenticated request to any THE PDF MAKER API path under https://keena-homoeomorphic-nila.ngrok-free.app/openapi. Use dedicated tools when they exist.",
   {
     method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).describe("HTTP method."),
     path: z

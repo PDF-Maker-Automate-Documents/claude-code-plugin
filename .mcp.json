@@ -2,7 +2,7 @@
   "mcpServers": {
     "api": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/servers/pdf-maker/index.js"],
+      "args": ["${CLAUDE_PLUGIN_ROOT:-.}/servers/pdf-maker/index.js"],
       "env": {
         "PDF_MAKER_API_KEY": "${PDF_MAKER_API_KEY}"
       }

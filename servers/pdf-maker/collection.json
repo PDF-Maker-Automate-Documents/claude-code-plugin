@@ -15,7 +15,81 @@
       "method": "GET",
       "path": "/templates",
       "description": "Retrieve all templates from the authenticated account.",
-      "headers": ["x-api-key"]
+      "headers": [
+        "x-api-key"
+      ]
+    },
+    {
+      "id": "create_html_template",
+      "name": "create html template",
+      "method": "POST",
+      "path": "/templates/html",
+      "description": "Create a WYSIWYG/HTML template (API data source) with Nunjucks body HTML. Returns template id for create_pdf.",
+      "headers": [
+        "x-api-key"
+      ],
+      "body": {
+        "name": {
+          "required": true,
+          "type": "string",
+          "description": "Display name for the template."
+        },
+        "bodyHtml": {
+          "required": true,
+          "type": "string",
+          "description": "Main HTML with Nunjucks placeholders. Prefer SunEditor table wrappers for dashboard editing."
+        },
+        "headerHtml": {
+          "required": false,
+          "type": "string",
+          "description": "Optional page header HTML (inline styles)."
+        },
+        "footerHtml": {
+          "required": false,
+          "type": "string",
+          "description": "Optional page footer HTML (inline styles)."
+        },
+        "css": {
+          "required": false,
+          "type": "string",
+          "description": "Optional CSS for the body."
+        },
+        "settings": {
+          "required": false,
+          "type": "object",
+          "description": "Optional page settings. pageSize: Letter|Legal|Tabloid|Ledger|A0-A6|Custom (default A4). orientation: portrait|landscape. customWidth/customHeight when Custom (e.g. 210mm). marginTop/Right/Bottom/Left (numbers, default 20), marginUnit (mm), printBackground (bool, default true), displayHeaderFooter (bool, default true), textDirection (ltr|rtl)."
+        },
+        "sampleData": {
+          "required": false,
+          "type": "object",
+          "description": "Sample JSON used for validation/preview."
+        },
+        "usedIn": {
+          "required": false,
+          "type": "string",
+          "description": "Optional internal note for API source purpose."
+        }
+      },
+      "exampleBody": {
+        "name": "Simple Invoice",
+        "bodyHtml": "<p>Invoice {{ invoice_number }} for {{ customer_name }}</p>",
+        "sampleData": {
+          "invoice_number": "INV-1",
+          "customer_name": "Jane Doe"
+        },
+        "settings": {
+          "pageSize": "A4",
+          "orientation": "portrait",
+          "marginTop": 15,
+          "marginRight": 15,
+          "marginBottom": 15,
+          "marginLeft": 15,
+          "marginUnit": "mm",
+          "printBackground": true,
+          "displayHeaderFooter": false,
+          "textDirection": "ltr"
+        }
+      }
     },
     {
       "id": "get_template_placeholders",
@@ -23,7 +97,9 @@
       "method": "GET",
       "path": "/templates/placeholders",
       "description": "Retrieve all placeholders from a template.",
-      "headers": ["x-api-key"],
+      "headers": [
+        "x-api-key"
+      ],
       "query": {
         "templateId": {
           "required": true,
@@ -37,7 +113,9 @@
       "method": "POST",
       "path": "/pdf",
       "description": "Create a PDF from a template by filling placeholders with JSON data. The response typically includes a URL to the generated PDF.",
-      "headers": ["x-api-key"],
+      "headers": [
+        "x-api-key"
+      ],
       "body": {
         "templateId": {
           "required": true,
@@ -67,7 +145,19 @@
       "method": "GET",
       "path": "/",
       "description": "Verify that the API key is valid.",
-      "headers": ["x-api-key"]
+      "headers": [
+        "x-api-key"
+      ]
+    },
+    {
+      "id": "get_plan",
+      "name": "current plan",
+      "method": "GET",
+      "path": "/plan",
+      "description": "Retrieve the authenticated account's current plan name, active status, and PDF/template usage quotas.",
+      "headers": [
+        "x-api-key"
+      ]
     }
   ]
 }

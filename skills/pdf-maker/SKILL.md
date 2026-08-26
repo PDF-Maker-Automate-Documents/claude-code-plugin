@@ -66,7 +66,51 @@ Templates created via `create_html_template` are **`HTML_TEMPLATE`**: raw HTML +
 - Text: `{{ customer_name }}`
 - Loops: `{% for item in line_items %}...{% endfor %}`
 - Conditions: `{% if show_discount %}...{% endif %}`
-- Filters: `render_qr`, `render_barcode`, `render_chart` (e.g. `{{ invoice_number | render_qr(width=240, margin=1, style="width: 120px;") }}`)
+- Filters: `render_qr`, `render_barcode` (e.g. `{{ invoice_number | render_qr(width=240, margin=1, style="width: 120px;") }}`), and `render_chart` (see **Charts** below)
+
+**Charts (`render_chart`)**
+
+Turns an array (or `{ labels, values }` object) into an inline SVG `<img>` for preview and PDF. Use in the **body** only — charts generally do not render in PDF headers/footers.
+
+```jinja2
+{{ monthly_sales | render_chart(type="bar", x="month", y="total", style="width: 420px;") }}
+{{ category_totals | render_chart(type="pie", x="label", y="value", title="By category") }}
+{{ monthly_sales | render_chart(type="line", x="month", y="total", color="#3B82F6") }}
+{{ category_totals | render_chart(type="doughnut", x="label", y="value") }}
+```
+
+**Accepted data shapes** (in `sampleData` / `create_pdf` `data`):
+
+```json
+"monthly_sales": [
+  { "month": "Jan", "total": 1200 },
+  { "month": "Feb", "total": 1800 }
+]
+
+"category_totals": [
+  { "label": "A", "value": 10 },
+  { "label": "B", "value": 20 }
+]
+
+"pie_data": { "labels": ["A", "B"], "values": [10, 20] }
+
+"plain_numbers": [10, 20, 30]
+```
+
+For object-row arrays, set `x` / `y` to the label and numeric field names. For `{ labels, values }` or a plain number array, `x` / `y` are optional.
+
+**Options**
+
+| Option | Notes |
+| --- | --- |
+| `type` | `bar` (default), `line`, `pie`, `doughnut` |
+| `x` / `y` | Keys on object rows for category and value |
+| `width` | 100–1000 (default 480) |
+| `height` | 60–800 (default 300) |
+| `title` | Optional chart title |
+| `color` / `colors` | Single color or palette |
+| `style` | CSS on the `<img>` (e.g. `width: 420px;`) |
+| `alt` | Image alt text |
 
 **Loops in tables** — use normal table markup; put `{% for %}` / `{% endfor %}` around the row template:
 
@@ -91,7 +135,7 @@ Templates created via `create_html_template` are **`HTML_TEMPLATE`**: raw HTML +
 </table>
 ```
 
-**Header / footer** — use inline styles only (they render in isolation). Optional ConvertAPI classes: `pageNumber`, `totalPages`, `date`.
+**Header / footer** — use inline styles only (they render in isolation). Optional PDF header/footer classes: `pageNumber`, `totalPages`, `date`.
 
 **Minimal example**
 
@@ -102,6 +146,16 @@ Templates created via `create_html_template` are **`HTML_TEMPLATE`**: raw HTML +
 ```
 
 With `sampleData`: `{ "invoice_number": "INV-1", "customer_name": "Jane", "invoice_total": 100 }`.
+
+**Images in sample / demo data**
+
+When the user does **not** provide logo or image URLs, use placehold.co in sample/demo payloads, e.g. `https://placehold.co/50x50?text=PDF+Maker` (adjust size/text as needed).
+
+- Allowed for `sampleData`, `preview_html_template`, and template authoring.
+- Allowed for `create_pdf` **only when** generating from sample/demo data (testing), not from the user’s real Automate or production payload.
+- **Never** use placehold.co in real Automate payloads, production pipelines, or `create_pdf` with production `data` — use the user’s real image URLs (or omit until they provide them).
+
+Example image field in `sampleData`: `{ "logo_url": "https://placehold.co/50x50?text=PDF+Maker" }`.
 
 **Full-page layouts (certificates, covers)**
 
@@ -125,11 +179,16 @@ Surfaces use **zero** default padding. To fill the page content box (works for p
 
 **Fonts (preview ≈ PDF)**
 
-Live Preview and ConvertAPI share the same Google Fonts list, embedded in a full HTML document for PDF.
+Live Preview and PDF generation share the same Google Fonts list (loaded automatically — no import needed for these families).
 
-- Prefer webfonts from the shared list for body/titles: `Roboto`, `Merriweather`, `Lora`, `Castoro`, `Lusitana`, `Montserrat`, etc.
-- Bare `Georgia` / `Times New Roman` / `Times` / `Arial` / `Helvetica` / `Helvetica Neue` in template CSS are **auto-remapped** to Merriweather / Lora / Roboto so Mac preview and ConvertAPI Linux match.
-- Prefer writing webfonts explicitly (e.g. `font-family: Merriweather, Georgia, serif;`) on wrappers/titles.
+**Supported fonts (use by name in `font-family`; do not `@import` / `@font-face` / link them):**
+
+Anton, Bungee, Castoro, Lato, Lobster, Lora, Lusitana, Merriweather, Montserrat, Nerko One, Noto Sans, Open Sans, Oswald, Raleway, Roboto, Roboto Condensed, Roboto Mono, Sansita Swashed, Ubuntu
+
+- Prefer these webfonts for body and titles (e.g. `font-family: Merriweather, serif;`).
+- **Do not rely on system fonts** (Arial, Helvetica, Georgia, Times, Impact, etc.) — they look different in preview vs PDF. Use a supported font, or a custom font you import yourself.
+- Common system names in template CSS are **auto-remapped** for parity: Georgia → Merriweather; Times / Times New Roman → Lora; Arial / Helvetica / Helvetica Neue → Roboto. Prefer writing the webfont name explicitly instead of depending on remap.
+- **Custom fonts** are allowed if you import them in template `css` (e.g. `@font-face` or an external stylesheet URL).
 - Decorative Unicode (`&#10047;`, emoji) still differs by OS symbol fonts — prefer SVG/PNG ornaments for exact parity.
 
 ## Page settings
@@ -170,7 +229,7 @@ Set `displayHeaderFooter` to `true` when you provide `headerHtml` / `footerHtml`
 
 Placeholder names come from the template, not from guesswork. After `get_template_placeholders`, copy those keys into `data`. Nested objects and arrays are allowed when the template expects them (line items, tables, images).
 
-If the user pastes a sample Automate JSON body, keep its shape and replace only the values.
+If the user pastes a sample Automate JSON body, keep its shape and replace only the values. For demo/sample runs only, missing image URLs may use placehold.co (see above); never leave placeholders in production Automate data.
 
 ## Results
 

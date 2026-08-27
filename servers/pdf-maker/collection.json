@@ -153,7 +153,7 @@
       "name": "get html template",
       "method": "GET",
       "path": "/templates/html/:templateId",
-      "description": "Load an HTML_TEMPLATE's HTML fields for editing.",
+      "description": "First call when the user gives a templateId to view or edit. Returns full HTML fields (bodyHtml, header, footer, css, settings, sampleData) — not placeholders alone.",
       "headers": [
         "x-api-key"
       ]

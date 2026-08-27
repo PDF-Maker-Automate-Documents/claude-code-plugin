@@ -322,7 +322,7 @@ server.tool(
 
 server.tool(
   "get_html_template",
-  "Load an HTML_TEMPLATE (or legacy WYSIWYG HTML template) bodyHtml, header, footer, css, settings, and sampleData (GET /templates/html/:templateId). Use before update_html_template.",
+  "First call when the user gives a templateId to view, refactor, or edit. Returns full HTML fields (bodyHtml, headerHtml, footerHtml, css, settings, sampleData) via GET /templates/html/:templateId — not placeholders alone. Use before update_html_template. Works for HTML_TEMPLATE and legacy WYSIWYG HTML templates.",
   {
     templateId: z.string().min(1).describe("Template ID to load."),
   },
@@ -459,7 +459,7 @@ server.tool(
 
 server.tool(
   "pdf_maker_request",
-  "Authenticated request to any THE PDF MAKER API path under https://keena-homoeomorphic-nila.ngrok-free.app/openapi. Use dedicated tools when they exist.",
+  "Authenticated request to any THE PDF MAKER API path under https://api.thepdfmaker.com. Use dedicated tools when they exist.",
   {
     method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).describe("HTTP method."),
     path: z

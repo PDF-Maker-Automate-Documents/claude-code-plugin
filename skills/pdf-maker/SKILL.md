@@ -32,7 +32,19 @@ Never rewrite `pdf-maker` to `pdf_maker`. Prefer these MCP tools over shell/curl
 - Templates can be created in the [dashboard](https://app.thepdfmaker.com/) (gallery / visual editor) **or** via `create_html_template` as **`HTML_TEMPLATE`** (raw HTML + CSS; opens in the dashboard code editor). Do **not** tell users to create `HTML_TEMPLATE` from the dashboard configure UI — that type is API/Claude only.
 - If auth fails, run `auth_check` and tell the user to copy the key from Settings → API Key and export `PDF_MAKER_API_KEY`.
 
-## Workflow — use an existing template
+## Workflow — inspect or edit an existing HTML template
+
+When the user gives a `templateId` to view, refactor, or edit HTML:
+
+1. Call `get_html_template` with that `templateId` **first**. Do **not** use `list_templates` or `get_template_placeholders` as a substitute — those do not return `bodyHtml`, CSS, or settings.
+2. Edit from the returned `bodyHtml`, `headerHtml`, `footerHtml`, `css`, `settings`, and `sampleData`.
+3. Call `preview_html_template` with those fields (plus your updates) so preview matches the dashboard, then `update_html_template`.
+4. Optionally if user says then call `create_pdf` with real `data`.
+5. The user can open the template in the dashboard code editor at `/templates/wysiwyg-editor?id=<templateId>` (body/header/footer are HTML source editors for `HTML_TEMPLATE`).
+
+## Workflow — use an existing template (fill PDF only)
+
+For editing HTML, use the inspect/edit workflow (`get_html_template`) above — not this section.
 
 1. If the template ID is unknown, call `list_templates`.
 2. Call `get_template_placeholders` with that `templateId` so `data` keys match the template.
@@ -43,15 +55,15 @@ Never rewrite `pdf-maker` to `pdf_maker`. Prefer these MCP tools over shell/curl
    - `outputPath` — optional workspace path if the user wants the file saved locally
 4. Return the generated PDF URL (or saved file path) to the user.
 
-## Workflow — create, preview, edit HTML, then generate a PDF
+## Workflow — create, preview, then generate a PDF
 
 1. Author `bodyHtml` with Nunjucks placeholders and normal HTML/CSS (see below). Prefer webfonts from the shared Google Fonts list.
 2. Call `preview_html_template` with `bodyHtml` and `sampleData` to verify filled output before saving.
 3. Call `create_html_template` with `name`, `bodyHtml`, and ideally `sampleData`. The saved type is `HTML_TEMPLATE` (raw HTML + Google Fonts + layout CSS).
 4. Read `template.id` from the response.
-5. To revise: `get_html_template` → edit HTML → `preview_html_template` → `update_html_template`. When previewing an edit, pass the same `settings`, `css`, `headerHtml`, `footerHtml`, and `sampleData` from `get_html_template` (plus your updated fields) so the preview matches the dashboard.
+5. To revise later, follow **inspect or edit an existing HTML template** (`get_html_template` → preview → update).
 6. Call `create_pdf` with real `data`.
-7. The user can open the template in the dashboard code editor at `/templates/wysiwyg-editor?id=<templateId>` (body/header/footer are HTML source editors for `HTML_TEMPLATE`).
+7. The user can open the template in the dashboard code editor at `/templates/wysiwyg-editor?id=<templateId>`.
 
 If `create_pdf` or `create_html_template` fails with a plan/quota error (402/400), call `get_plan` and explain remaining PDF/template usage to the user.
 
@@ -101,16 +113,16 @@ For object-row arrays, set `x` / `y` to the label and numeric field names. For `
 
 **Options**
 
-| Option | Notes |
-| --- | --- |
-| `type` | `bar` (default), `line`, `pie`, `doughnut` |
-| `x` / `y` | Keys on object rows for category and value |
-| `width` | 100–1000 (default 480) |
-| `height` | 60–800 (default 300) |
-| `title` | Optional chart title |
-| `color` / `colors` | Single color or palette |
-| `style` | CSS on the `<img>` (e.g. `width: 420px;`) |
-| `alt` | Image alt text |
+| Option             | Notes                                      |
+| ------------------ | ------------------------------------------ |
+| `type`             | `bar` (default), `line`, `pie`, `doughnut` |
+| `x` / `y`          | Keys on object rows for category and value |
+| `width`            | 100–1000 (default 480)                     |
+| `height`           | 60–800 (default 300)                       |
+| `title`            | Optional chart title                       |
+| `color` / `colors` | Single color or palette                    |
+| `style`            | CSS on the `<img>` (e.g. `width: 420px;`)  |
+| `alt`              | Image alt text                             |
 
 **Loops in tables** — use normal table markup; put `{% for %}` / `{% endfor %}` around the row template:
 
@@ -133,6 +145,31 @@ For object-row arrays, set `x` / `y` to the label and numeric field names. For `
     {% endfor %}
   </tbody>
 </table>
+```
+
+**Side-by-side columns (signatures, two-up blocks)**
+
+**Do not** use `display: inline-block` with `%` widths that sum to ~100% (e.g. `width: 48%` + `margin-left: 4%` + `width: 48%`). Preview may look correct; PDF often wraps the second column under the first because of whitespace between `inline-block` elements, font metrics, and a slightly tighter content box.
+
+**Prefer** `display: flex` with `flex: 1; min-width: 0` on each column (or a 2-column `<table>`):
+
+```html
+<div
+  style="display:flex;justify-content:space-between;gap:4%;margin-top:40px;padding-top:20px;border-top:2px solid #1a1a1a"
+>
+  <div style="flex:1;min-width:0">
+    <p style="margin:0 0 50px 0">LANDLORD:</p>
+    <p style="margin:0 0 30px 0">Signature: ___________________________</p>
+    <p style="margin:0">Name (Print): {{ landlord_name }}</p>
+    <p style="margin:5px 0">Date: ___________________________</p>
+  </div>
+  <div style="flex:1;min-width:0">
+    <p style="margin:0 0 50px 0">TENANT:</p>
+    <p style="margin:0 0 30px 0">Signature: ___________________________</p>
+    <p style="margin:0">Name (Print): {{ tenant_name }}</p>
+    <p style="margin:5px 0">Date: ___________________________</p>
+  </div>
+</div>
 ```
 
 **Header / footer** — use inline styles only (they render in isolation). Optional PDF header/footer classes: `pageNumber`, `totalPages`, `date`.

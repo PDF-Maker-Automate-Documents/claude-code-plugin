@@ -1,9 +1,12 @@
 ---
 name: pdf-maker
-description: Generate PDFs and call THE PDF MAKER API from Claude Code. Use when the user wants to create a PDF, create an HTML/WYSIWYG template, list PDF Maker templates, fill template placeholders, check plan usage, generate a document from JSON, or call api.thepdfmaker.com.
+description: Generate PDFs and call THE PDF MAKER API from Claude Code. Use when the user wants to create a PDF, create or edit an HTML template, preview HTML output, list PDF Maker templates, fill template placeholders, check plan usage, generate a document from JSON, or call the PDF Maker API.
 allowed-tools:
   - mcp__plugin_pdf-maker_api__list_templates
   - mcp__plugin_pdf-maker_api__create_html_template
+  - mcp__plugin_pdf-maker_api__preview_html_template
+  - mcp__plugin_pdf-maker_api__get_html_template
+  - mcp__plugin_pdf-maker_api__update_html_template
   - mcp__plugin_pdf-maker_api__get_template_placeholders
   - mcp__plugin_pdf-maker_api__create_pdf
   - mcp__plugin_pdf-maker_api__auth_check
@@ -13,15 +16,35 @@ allowed-tools:
 
 # The PDF Maker
 
-Call [THE PDF MAKER API](https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro) through this plugin's MCP tools. Do not invent curl commands when these tools are available.
+Call THE PDF Maker API through this plugin's MCP tools. Do not invent curl commands when these tools are available.
+
+## Tool names (critical)
+
+Callable MCP names keep the hyphen in `pdf-maker`:
+
+`mcp__plugin_pdf-maker_api__create_html_template`
+
+Never rewrite `pdf-maker` to `pdf_maker`. Prefer these MCP tools over shell/curl.
 
 ## Prerequisites
 
 - `PDF_MAKER_API_KEY` must be set in the environment. Get it after login from [Settings → API Key](https://app.thepdfmaker.com/settings?tab=api-key).
-- Templates can be created in the [dashboard](https://app.thepdfmaker.com/) **or** via `create_html_template` (WYSIWYG/HTML + API data source).
+- Templates can be created in the [dashboard](https://app.thepdfmaker.com/) (gallery / visual editor) **or** via `create_html_template` as **`HTML_TEMPLATE`** (raw HTML + CSS; opens in the dashboard code editor). Do **not** tell users to create `HTML_TEMPLATE` from the dashboard configure UI — that type is API/Claude only.
 - If auth fails, run `auth_check` and tell the user to copy the key from Settings → API Key and export `PDF_MAKER_API_KEY`.
 
-## Workflow — use an existing template
+## Workflow — inspect or edit an existing HTML template
+
+When the user gives a `templateId` to view, refactor, or edit HTML:
+
+1. Call `get_html_template` with that `templateId` **first**. Do **not** use `list_templates` or `get_template_placeholders` as a substitute — those do not return `bodyHtml`, CSS, or settings.
+2. Edit from the returned `bodyHtml`, `headerHtml`, `footerHtml`, `css`, `settings`, and `sampleData`.
+3. Call `preview_html_template` with those fields (plus your updates) so preview matches the dashboard, then `update_html_template`.
+4. Optionally if user says then call `create_pdf` with real `data`.
+5. The user can open the template in the dashboard code editor at `/templates/wysiwyg-editor?id=<templateId>` (body/header/footer are HTML source editors for `HTML_TEMPLATE`).
+
+## Workflow — use an existing template (fill PDF only)
+
+For editing HTML, use the inspect/edit workflow (`get_html_template`) above — not this section.
 
 1. If the template ID is unknown, call `list_templates`.
 2. Call `get_template_placeholders` with that `templateId` so `data` keys match the template.
@@ -32,68 +55,124 @@ Call [THE PDF MAKER API](https://documenter.getpostman.com/view/15968072/2sA35HV
    - `outputPath` — optional workspace path if the user wants the file saved locally
 4. Return the generated PDF URL (or saved file path) to the user.
 
-## Workflow — create an HTML template then generate a PDF
+## Workflow — create, preview, then generate a PDF
 
-1. Author `bodyHtml` with Nunjucks placeholders and SunEditor-compatible markup (see below).
-2. Call `create_html_template` with `name`, `bodyHtml`, and ideally `sampleData` matching those placeholders.
-3. Read `template.id` from the response.
-4. Call `get_template_placeholders` (optional check), then `create_pdf` with real `data`.
-5. The user can later open the same template in the dashboard WYSIWYG editor at `/templates/wysiwyg-editor?id=<templateId>`.
+1. Author `bodyHtml` with Nunjucks placeholders and normal HTML/CSS (see below). Prefer webfonts from the shared Google Fonts list.
+2. Call `preview_html_template` with `bodyHtml` and `sampleData` to verify filled output before saving.
+3. Call `create_html_template` with `name`, `bodyHtml`, and ideally `sampleData`. The saved type is `HTML_TEMPLATE` (raw HTML + Google Fonts + layout CSS).
+4. Read `template.id` from the response.
+5. To revise later, follow **inspect or edit an existing HTML template** (`get_html_template` → preview → update).
+6. Call `create_pdf` with real `data`.
+7. The user can open the template in the dashboard code editor at `/templates/wysiwyg-editor?id=<templateId>`.
 
 If `create_pdf` or `create_html_template` fails with a plan/quota error (402/400), call `get_plan` and explain remaining PDF/template usage to the user.
 
-Use `pdf_maker_request` only for documented paths that do not have a dedicated tool. Allowed host is `https://keena-homoeomorphic-nila.ngrok-free.app/openapi`.
+Use `pdf_maker_request` only for documented paths that do not have a dedicated tool.
 
-## HTML / Nunjucks / SunEditor conventions
+## HTML / Nunjucks conventions (`HTML_TEMPLATE`)
 
-Templates created via `create_html_template` use the same engine as the dashboard WYSIWYG editor.
+Templates created via `create_html_template` are **`HTML_TEMPLATE`**: raw HTML + CSS, plus Google Fonts and page layout CSS. Preview nests body HTML under `.se-preview-body > main`; PDF under `.se-pdf-surface > main` (with `.se-html-surface` on the surface). Prefer normal HTML tables and CSS.
 
 **Placeholders**
 
 - Text: `{{ customer_name }}`
 - Loops: `{% for item in line_items %}...{% endfor %}`
 - Conditions: `{% if show_discount %}...{% endif %}`
-- Filters: `render_qr`, `render_barcode`, `render_chart` (e.g. `{{ invoice_number | render_qr(width=240, margin=1, style="width: 120px;") }}`)
+- Filters: `render_qr`, `render_barcode` (e.g. `{{ invoice_number | render_qr(width=240, margin=1, style="width: 120px;") }}`), and `render_chart` (see **Charts** below)
 
-**SunEditor layout tables** (so the dashboard editor handles tables cleanly):
+**Charts (`render_chart`)**
+
+Turns an array (or `{ labels, values }` object) into an inline SVG `<img>` for preview and PDF. Use in the **body** only — charts generally do not render in PDF headers/footers.
+
+```jinja2
+{{ monthly_sales | render_chart(type="bar", x="month", y="total", style="width: 420px;") }}
+{{ category_totals | render_chart(type="pie", x="label", y="value", title="By category") }}
+{{ monthly_sales | render_chart(type="line", x="month", y="total", color="#3B82F6") }}
+{{ category_totals | render_chart(type="doughnut", x="label", y="value") }}
+```
+
+**Accepted data shapes** (in `sampleData` / `create_pdf` `data`):
+
+```json
+"monthly_sales": [
+  { "month": "Jan", "total": 1200 },
+  { "month": "Feb", "total": 1800 }
+]
+
+"category_totals": [
+  { "label": "A", "value": 10 },
+  { "label": "B", "value": 20 }
+]
+
+"pie_data": { "labels": ["A", "B"], "values": [10, 20] }
+
+"plain_numbers": [10, 20, 30]
+```
+
+For object-row arrays, set `x` / `y` to the label and numeric field names. For `{ labels, values }` or a plain number array, `x` / `y` are optional.
+
+**Options**
+
+| Option             | Notes                                      |
+| ------------------ | ------------------------------------------ |
+| `type`             | `bar` (default), `line`, `pie`, `doughnut` |
+| `x` / `y`          | Keys on object rows for category and value |
+| `width`            | 100–1000 (default 480)                     |
+| `height`           | 60–800 (default 300)                       |
+| `title`            | Optional chart title                       |
+| `color` / `colors` | Single color or palette                    |
+| `style`            | CSS on the `<img>` (e.g. `width: 420px;`)  |
+| `alt`              | Image alt text                             |
+
+**Loops in tables** — use normal table markup; put `{% for %}` / `{% endfor %}` around the row template:
 
 ```html
-<figure
-  class="se-flex-component se-input-component se-scroll-figure-x"
-  style="width: 100%"
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Qty</th>
+      <th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in line_items %}
+    <tr>
+      <td>{{ item.name }}</td>
+      <td>{{ item.qty }}</td>
+      <td>{{ item.price }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+```
+
+**Side-by-side columns (signatures, two-up blocks)**
+
+**Do not** use `display: inline-block` with `%` widths that sum to ~100% (e.g. `width: 48%` + `margin-left: 4%` + `width: 48%`). Preview may look correct; PDF often wraps the second column under the first because of whitespace between `inline-block` elements, font metrics, and a slightly tighter content box.
+
+**Prefer** `display: flex` with `flex: 1; min-width: 0` on each column (or a 2-column `<table>`):
+
+```html
+<div
+  style="display:flex;justify-content:space-between;gap:4%;margin-top:40px;padding-top:20px;border-top:2px solid #1a1a1a"
 >
-  <table class="se-table-layout-auto">
-    <colgroup>
-      <col style="width: 50%" />
-      <col style="width: 50%" />
-    </colgroup>
-    <tbody>
-      <tr>
-        <td class="" style="vertical-align: top"><div>{{ left }}</div></td>
-        <td class="" style="text-align: right"><div>{{ right }}</div></td>
-      </tr>
-    </tbody>
-  </table>
-</figure>
+  <div style="flex:1;min-width:0">
+    <p style="margin:0 0 50px 0">LANDLORD:</p>
+    <p style="margin:0 0 30px 0">Signature: ___________________________</p>
+    <p style="margin:0">Name (Print): {{ landlord_name }}</p>
+    <p style="margin:5px 0">Date: ___________________________</p>
+  </div>
+  <div style="flex:1;min-width:0">
+    <p style="margin:0 0 50px 0">TENANT:</p>
+    <p style="margin:0 0 30px 0">Signature: ___________________________</p>
+    <p style="margin:0">Name (Print): {{ tenant_name }}</p>
+    <p style="margin:5px 0">Date: ___________________________</p>
+  </div>
+</div>
 ```
 
-**Loop marker rows** — put `{% for %}` / `{% endfor %}` on rows with `class="show-only-in-editor"` so control tags are hidden in the PDF:
-
-```html
-<tr class="show-only-in-editor">
-  <td colspan="4"><div>{% for item in line_items %}</div></td>
-</tr>
-<tr>
-  <td><div>{{ item.name }}</div></td>
-  <td><div>{{ item.qty }}</div></td>
-  <td><div>{{ item.price }}</div></td>
-</tr>
-<tr class="show-only-in-editor">
-  <td colspan="4"><div>{% endfor %}</div></td>
-</tr>
-```
-
-**Header / footer** — use inline styles only (they render in isolation). Optional ConvertAPI classes: `pageNumber`, `totalPages`, `date`.
+**Header / footer** — use inline styles only (they render in isolation). Optional PDF header/footer classes: `pageNumber`, `totalPages`, `date`.
 
 **Minimal example**
 
@@ -105,16 +184,60 @@ Templates created via `create_html_template` use the same engine as the dashboar
 
 With `sampleData`: `{ "invoice_number": "INV-1", "customer_name": "Jane", "invoice_total": 100 }`.
 
+**Images in sample / demo data**
+
+When the user does **not** provide logo or image URLs, use placehold.co in sample/demo payloads, e.g. `https://placehold.co/50x50?text=PDF+Maker` (adjust size/text as needed).
+
+- Allowed for `sampleData`, `preview_html_template`, and template authoring.
+- Allowed for `create_pdf` **only when** generating from sample/demo data (testing), not from the user’s real Automate or production payload.
+- **Never** use placehold.co in real Automate payloads, production pipelines, or `create_pdf` with production `data` — use the user’s real image URLs (or omit until they provide them).
+
+Example image field in `sampleData`: `{ "logo_url": "https://placehold.co/50x50?text=PDF+Maker" }`.
+
+**Full-page layouts (certificates, covers)**
+
+Surfaces use **zero** default padding. To fill the page content box (works for portrait, landscape, and all paper sizes):
+
+```css
+.cert-frame {
+  flex: 1;
+  min-height: 100%;
+  display: flex; /* or grid */
+  flex-direction: column;
+}
+```
+
+- Put `flex: 1` / `min-height: 100%` on the **outer wrapper**, not only on `body` — `body { display: flex }` alone does not stretch nested content.
+- Do **not** set `width`, `max-width`, or fixed horizontal sizes on the main content wrapper — `main` already spans the full content box; constraining width leaves empty side space and breaks preview/PDF parity.
+- Do **not** hard-code page heights in `mm`/`px`; use flex / `%` so orientation and `settings.pageSize` drive the canvas.
+- Surfaces already have `padding: 0`; do not add compensating padding on the wrapper.
+- Set size/orientation via `settings` (`pageSize`, `orientation`, margins), not CSS.
+- For **edge-to-edge / full content area**, set page margins to `0` in `settings` (`marginTop` / `marginRight` / `marginBottom` / `marginLeft`). Default margins (`20`) shrink the content box; CSS cannot “undo” them.
+
+**Fonts (preview ≈ PDF)**
+
+Live Preview and PDF generation share the same Google Fonts list (loaded automatically — no import needed for these families).
+
+**Supported fonts (use by name in `font-family`; do not `@import` / `@font-face` / link them):**
+
+Anton, Bungee, Castoro, Lato, Lobster, Lora, Lusitana, Merriweather, Montserrat, Nerko One, Noto Sans, Open Sans, Oswald, Raleway, Roboto, Roboto Condensed, Roboto Mono, Sansita Swashed, Ubuntu
+
+- Prefer these webfonts for body and titles (e.g. `font-family: Merriweather, serif;`).
+- **Do not rely on system fonts** (Arial, Helvetica, Georgia, Times, Impact, etc.) — they look different in preview vs PDF. Use a supported font, or a custom font you import yourself.
+- Common system names in template CSS are **auto-remapped** for parity: Georgia → Merriweather; Times / Times New Roman → Lora; Arial / Helvetica / Helvetica Neue → Roboto. Prefer writing the webfont name explicitly instead of depending on remap.
+- **Custom fonts** are allowed if you import them in template `css` (e.g. `@font-face` or an external stylesheet URL).
+- Decorative Unicode (`&#10047;`, emoji) still differs by OS symbol fonts — prefer SVG/PNG ornaments for exact parity.
+
 ## Page settings
 
-Pass optional `settings` to `create_html_template`. Omitted keys use backend defaults via `normalizePageSettings`.
+Pass optional `settings` to `create_html_template` / `update_html_template` / `preview_html_template`. Omitted keys use backend defaults via `normalizePageSettings`.
 
 | Key                                                         | Type    | Allowed / notes                                             | Default           |
 | ----------------------------------------------------------- | ------- | ----------------------------------------------------------- | ----------------- |
 | `pageSize`                                                  | string  | `Letter`, `Legal`, `Tabloid`, `Ledger`, `A0`–`A6`, `Custom` | `A4`              |
 | `orientation`                                               | string  | `portrait`, `landscape`                                     | `portrait`        |
 | `customWidth` / `customHeight`                              | string  | e.g. `210mm` — used when `pageSize` is `Custom`             | `210mm` / `297mm` |
-| `marginTop` / `marginRight` / `marginBottom` / `marginLeft` | number  | margin amounts                                              | `20`              |
+| `marginTop` / `marginRight` / `marginBottom` / `marginLeft` | number  | margin amounts; use `0` for full-bleed content              | `20`              |
 | `marginUnit`                                                | string  | typically `mm`                                              | `mm`              |
 | `printBackground`                                           | boolean | print CSS backgrounds                                       | `true`            |
 | `displayHeaderFooter`                                       | boolean | enable header/footer HTML                                   | `true`            |
@@ -143,11 +266,12 @@ Set `displayHeaderFooter` to `true` when you provide `headerHtml` / `footerHtml`
 
 Placeholder names come from the template, not from guesswork. After `get_template_placeholders`, copy those keys into `data`. Nested objects and arrays are allowed when the template expects them (line items, tables, images).
 
-If the user pastes a sample Automate JSON body, keep its shape and replace only the values.
+If the user pastes a sample Automate JSON body, keep its shape and replace only the values. For demo/sample runs only, missing image URLs may use placehold.co (see above); never leave placeholders in production Automate data.
 
 ## Results
 
 - JSON responses usually include a URL — give that URL to the user.
-- After `create_html_template`, highlight `template.id` so the user can reuse it or open it in the dashboard.
+- After `create_html_template` / `update_html_template`, highlight `template.id`.
+- After `preview_html_template`, inspect `html` to confirm placeholders resolved correctly before saving. The `html` field is a self-contained document (Google Fonts + layout CSS) matching the dashboard HTML template preview.
 - Binary PDF responses are saved when `outputPath` is set; otherwise ask for a path if they want a local file.
 - Surface HTTP errors and API error bodies instead of retrying blindly on 401/402. On quota failures, call `get_plan`.

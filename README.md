@@ -1,6 +1,6 @@
 # The PDF Maker — Claude Code plugin
 
-Lets Claude Code call [THE PDF MAKER API](https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro) as native tools: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.
+Lets Claude Code call [THE PDF MAKER API](https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro) as native tools: create, preview, and update HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.
 
 ## Requirements
 
@@ -53,11 +53,14 @@ In `/mcp`, the working server is named `plugin:pdf-maker:api`. If you opened thi
 | --- | --- |
 | `list_templates` | `GET /templates` |
 | `create_html_template` | `POST /templates/html` |
+| `preview_html_template` | `POST /templates/html/preview` |
+| `get_html_template` | `GET /templates/html/:templateId` |
+| `update_html_template` | `PUT /templates/html/:templateId` |
 | `get_template_placeholders` | `GET /templates/placeholders` |
 | `create_pdf` | `POST /pdf` |
 | `auth_check` | `GET /` |
 | `get_plan` | `GET /plan` |
-| `pdf_maker_request` | any path on `https://api.thepdfmaker.com` |
+| `pdf_maker_request` | any path on the configured API base URL |
 
 Auth header: `x-api-key`. Base URL: `https://api.thepdfmaker.com`.
 
@@ -66,12 +69,13 @@ Auth header: `x-api-key`. Base URL: `https://api.thepdfmaker.com`.
 **Option A — API (Claude)**
 
 1. Ask Claude to create an HTML template with Nunjucks placeholders (`{{ field }}`, loops, etc.).
-2. Use the returned `template.id` with `create_pdf` and your JSON data.
-3. Open the same template later in the dashboard WYSIWYG editor if you want to edit visually.
+2. Ask Claude to preview the HTML, then update if needed. Created templates are `HTML_TEMPLATE` (raw HTML, no SunEditor).
+3. Use the returned `template.id` with `create_pdf` and your JSON data.
+4. Open the same template later in the dashboard code editor at `/templates/wysiwyg-editor?id=…` (not the visual SunEditor).
 
 **Option B — Dashboard**
 
-1. In The PDF Maker dashboard, create a template with **API** as the data source (WYSIWYG or Google Doc).
+1. In The PDF Maker dashboard, create a **WYSIWYG** or Google Doc template with **API** as the data source. Do not create `HTML_TEMPLATE` from configure — that type is API/Claude only.
 2. Add placeholders where values should be filled.
 3. Copy the template ID and the sample request body from Automate.
 4. Ask Claude to generate the PDF with that ID and your data.

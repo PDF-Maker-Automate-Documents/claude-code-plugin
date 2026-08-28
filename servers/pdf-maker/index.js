@@ -200,14 +200,14 @@ server.tool(
 
 server.tool(
   "create_html_template",
-  "Create a WYSIWYG/HTML template via POST /templates/html. Use SunEditor-compatible HTML with Nunjucks placeholders ({{ field }}, {% for %}). Returns templateId for get_template_placeholders and create_pdf.",
+  "Create an HTML_TEMPLATE via POST /templates/html (API/Claude only — raw HTML + CSS, no SunEditor). Use Nunjucks placeholders ({{ field }}, {% for %}) and normal HTML. Prefer webfonts. Returns templateId for get_template_placeholders and create_pdf. Do not create this type from the dashboard configure UI.",
   {
     name: z.string().min(1).describe("Display name for the new template."),
     bodyHtml: z
       .string()
       .min(1)
       .describe(
-        "Main document HTML with Nunjucks placeholders. Prefer SunEditor table wrappers (figure.se-flex-component > table.se-table-layout-auto) and show-only-in-editor rows for {% for %}/{% endfor %}."
+        "Main document HTML with Nunjucks placeholders. Use normal HTML/CSS; SunEditor table wrappers are optional and mainly for WYSIWYG templates."
       ),
     headerHtml: z
       .string()
@@ -259,6 +259,136 @@ server.tool(
     return callApi({
       method: "POST",
       path: "/templates/html",
+      body,
+    });
+  }
+);
+
+server.tool(
+  "preview_html_template",
+  "Render a draft HTML template with sample data via POST /templates/html/preview. Returns a self-contained HTML document (Google Fonts + layout CSS; no SunEditor by default) matching HTML_TEMPLATE dashboard preview. Does not save.",
+  {
+    bodyHtml: z
+      .string()
+      .min(1)
+      .describe("Main document HTML with Nunjucks placeholders to preview."),
+    headerHtml: z.string().optional().describe("Optional page header HTML."),
+    footerHtml: z.string().optional().describe("Optional page footer HTML."),
+    css: z.string().optional().describe("Optional CSS for the body."),
+    settings: z
+      .record(z.any())
+      .optional()
+      .describe(
+        "Optional page settings (pageSize, orientation, margins, displayHeaderFooter, textDirection, etc.)."
+      ),
+    sampleData: z
+      .union([z.record(z.any()), z.string()])
+      .optional()
+      .describe(
+        "Sample JSON used to fill placeholders for the preview, as an object or JSON string."
+      ),
+    title: z.string().optional().describe("Optional document title for the preview."),
+  },
+  async ({ bodyHtml, headerHtml, footerHtml, css, settings, sampleData, title }) => {
+    let parsedSampleData;
+    try {
+      parsedSampleData =
+        sampleData === undefined ? undefined : parseData(sampleData);
+    } catch (err) {
+      return errorResult(
+        new Error(
+          `sampleData is not valid JSON: ${err instanceof Error ? err.message : String(err)}`
+        )
+      );
+    }
+
+    const body = { bodyHtml };
+    if (headerHtml !== undefined) body.headerHtml = headerHtml;
+    if (footerHtml !== undefined) body.footerHtml = footerHtml;
+    if (css !== undefined) body.css = css;
+    if (settings !== undefined) body.settings = settings;
+    if (parsedSampleData !== undefined) body.sampleData = parsedSampleData;
+    if (title !== undefined) body.title = title;
+
+    // format=json → { success, html }; editorCss defaults to none when omitted.
+    return callApi({
+      method: "POST",
+      path: "/templates/html/preview",
+      query: { format: "json" },
+      body,
+    });
+  }
+);
+
+server.tool(
+  "get_html_template",
+  "First call when the user gives a templateId to view, refactor, or edit. Returns full HTML fields (bodyHtml, headerHtml, footerHtml, css, settings, sampleData) via GET /templates/html/:templateId — not placeholders alone. Use before update_html_template. Works for HTML_TEMPLATE and legacy WYSIWYG HTML templates.",
+  {
+    templateId: z.string().min(1).describe("Template ID to load."),
+  },
+  async ({ templateId }) =>
+    callApi({
+      method: "GET",
+      path: `/templates/html/${encodeURIComponent(templateId)}`,
+    })
+);
+
+server.tool(
+  "update_html_template",
+  "Update an existing HTML_TEMPLATE (or legacy WYSIWYG HTML template) via PUT /templates/html/:templateId. Partial updates merge into the saved htmlTemplate; stored using is preserved. Call preview_html_template first to verify changes.",
+  {
+    templateId: z.string().min(1).describe("Template ID to update."),
+    name: z.string().optional().describe("Optional new display name."),
+    bodyHtml: z
+      .string()
+      .optional()
+      .describe("Optional new main document HTML with Nunjucks placeholders."),
+    headerHtml: z.string().optional().describe("Optional page header HTML."),
+    footerHtml: z.string().optional().describe("Optional page footer HTML."),
+    css: z.string().optional().describe("Optional CSS for the body."),
+    settings: z
+      .record(z.any())
+      .optional()
+      .describe("Optional page settings to replace existing settings."),
+    sampleData: z
+      .union([z.record(z.any()), z.string()])
+      .optional()
+      .describe("Optional sample JSON as an object or JSON string."),
+  },
+  async ({
+    templateId,
+    name,
+    bodyHtml,
+    headerHtml,
+    footerHtml,
+    css,
+    settings,
+    sampleData,
+  }) => {
+    let parsedSampleData;
+    try {
+      parsedSampleData =
+        sampleData === undefined ? undefined : parseData(sampleData);
+    } catch (err) {
+      return errorResult(
+        new Error(
+          `sampleData is not valid JSON: ${err instanceof Error ? err.message : String(err)}`
+        )
+      );
+    }
+
+    const body = {};
+    if (name !== undefined) body.name = name;
+    if (bodyHtml !== undefined) body.bodyHtml = bodyHtml;
+    if (headerHtml !== undefined) body.headerHtml = headerHtml;
+    if (footerHtml !== undefined) body.footerHtml = footerHtml;
+    if (css !== undefined) body.css = css;
+    if (settings !== undefined) body.settings = settings;
+    if (parsedSampleData !== undefined) body.sampleData = parsedSampleData;
+
+    return callApi({
+      method: "PUT",
+      path: `/templates/html/${encodeURIComponent(templateId)}`,
       body,
     });
   }
@@ -329,7 +459,7 @@ server.tool(
 
 server.tool(
   "pdf_maker_request",
-  "Authenticated request to any THE PDF MAKER API path under https://keena-homoeomorphic-nila.ngrok-free.app/openapi. Use dedicated tools when they exist.",
+  "Authenticated request to any THE PDF MAKER API path under https://api.thepdfmaker.com. Use dedicated tools when they exist.",
   {
     method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).describe("HTTP method."),
     path: z

@@ -24,7 +24,7 @@
       "name": "create html template",
       "method": "POST",
       "path": "/templates/html",
-      "description": "Create a WYSIWYG/HTML template (API data source) with Nunjucks body HTML. Returns template id for create_pdf.",
+      "description": "Create an HTML_TEMPLATE (API/Claude only — raw HTML + CSS). Returns template id for create_pdf.",
       "headers": [
         "x-api-key"
       ],
@@ -37,7 +37,7 @@
         "bodyHtml": {
           "required": true,
           "type": "string",
-          "description": "Main HTML with Nunjucks placeholders. Prefer SunEditor table wrappers for dashboard editing."
+          "description": "Main HTML with Nunjucks placeholders. Use normal HTML/CSS; prefer webfonts from the shared Google Fonts list. No need to import these fonts as they are already included in the template."
         },
         "headerHtml": {
           "required": false,
@@ -88,6 +88,113 @@
           "printBackground": true,
           "displayHeaderFooter": false,
           "textDirection": "ltr"
+        }
+      }
+    },
+    {
+      "id": "preview_html_template",
+      "name": "preview html template",
+      "method": "POST",
+      "path": "/templates/html/preview",
+      "description": "Render draft HTML with sample data. Returns JSON { success, html } — a self-contained document with Google Fonts + layout CSS. Does not save.",
+      "headers": [
+        "x-api-key"
+      ],
+      "query": {
+        "format": {
+          "required": false,
+          "description": "Response shape. Default html (text/html body). Set to json for { success, html } (MCP / API clients)."
+        },
+        "editorCss": {
+          "required": false,
+          "description": "If the template using is HTML_TEMPLATE, set to none (no SunEditor CSS). For WYSIWYG_TEMPLATE (SunEditor), leave unset so the default SunEditor stylesheet is included."
+        }
+      },
+      "body": {
+        "bodyHtml": {
+          "required": true,
+          "type": "string",
+          "description": "Main HTML with Nunjucks placeholders."
+        },
+        "headerHtml": {
+          "required": false,
+          "type": "string"
+        },
+        "footerHtml": {
+          "required": false,
+          "type": "string"
+        },
+        "css": {
+          "required": false,
+          "type": "string"
+        },
+        "settings": {
+          "required": false,
+          "type": "object"
+        },
+        "sampleData": {
+          "required": false,
+          "type": "object"
+        },
+        "title": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "exampleBody": {
+        "bodyHtml": "<p>Hello {{ customer_name }}</p>",
+        "sampleData": {
+          "customer_name": "Jane"
+        }
+      }
+    },
+    {
+      "id": "get_html_template",
+      "name": "get html template",
+      "method": "GET",
+      "path": "/templates/html/:templateId",
+      "description": "First call when the user gives a templateId to view or edit. Returns full HTML fields (bodyHtml, header, footer, css, settings, sampleData) — not placeholders alone.",
+      "headers": [
+        "x-api-key"
+      ]
+    },
+    {
+      "id": "update_html_template",
+      "name": "update html template",
+      "method": "PUT",
+      "path": "/templates/html/:templateId",
+      "description": "Update an existing HTML_TEMPLATE. Partial fields merge into saved htmlTemplate. Preserves stored using.",
+      "headers": [
+        "x-api-key"
+      ],
+      "body": {
+        "name": {
+          "required": false,
+          "type": "string"
+        },
+        "bodyHtml": {
+          "required": false,
+          "type": "string"
+        },
+        "headerHtml": {
+          "required": false,
+          "type": "string"
+        },
+        "footerHtml": {
+          "required": false,
+          "type": "string"
+        },
+        "css": {
+          "required": false,
+          "type": "string"
+        },
+        "settings": {
+          "required": false,
+          "type": "object"
+        },
+        "sampleData": {
+          "required": false,
+          "type": "object"
         }
       }
     },

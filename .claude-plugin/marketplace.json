@@ -10,7 +10,8 @@
     {
       "name": "pdf-maker",
       "source": "./",
-      "description": "Call THE PDF MAKER API from Claude Code: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON."
+      "description": "Call THE PDF MAKER API from Claude Code: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.",
+      "version": "1.0.0"
     }
   ]
 }

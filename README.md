@@ -10,7 +10,7 @@ Lets Claude Code call [THE PDF MAKER API](https://documenter.getpostman.com/view
 export PDF_MAKER_API_KEY="your-api-key"
 ```
 
-2. In Claude Code, add the marketplace and install the plugin:
+1. In Claude Code, add the marketplace and install the plugin:
 
 ```
 /plugin marketplace add PDF-Maker-Automate-Documents/claude-code-plugin
@@ -18,7 +18,7 @@ export PDF_MAKER_API_KEY="your-api-key"
 /reload-plugins
 ```
 
-3. Example prompts to use
+1. Example prompts to use
 
 Once the plugin is installed, try these in Claude Code:
 
@@ -59,7 +59,7 @@ Requirements
 From a clone of this repo:
 
 ```bash
-cd servers/pdf-maker && npm install
+npm install
 export PDF_MAKER_API_KEY="your-api-key"
 claude --plugin-dir .
 ```

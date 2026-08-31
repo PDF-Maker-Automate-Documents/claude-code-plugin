@@ -59,7 +59,7 @@ Requirements
 From a clone of this repo:
 
 ```bash
-cd servers/pdf-maker && npm install
+npm install
 export PDF_MAKER_API_KEY="your-api-key"
 claude --plugin-dir .
 ```

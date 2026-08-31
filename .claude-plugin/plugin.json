@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "pdf-maker",
   "displayName": "The PDF Maker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Call THE PDF MAKER API from Claude Code: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.",
   "author": {
     "name": "The PDF Maker",
@@ -11,5 +11,11 @@
   "homepage": "https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro",
   "repository": "https://github.com/PDF-Maker-Automate-Documents/claude-code-plugin",
   "license": "MIT",
-  "keywords": ["pdf", "pdf-maker", "documents", "templates", "api"]
+  "keywords": [
+    "pdf",
+    "pdf-maker",
+    "documents",
+    "templates",
+    "api"
+  ]
 }

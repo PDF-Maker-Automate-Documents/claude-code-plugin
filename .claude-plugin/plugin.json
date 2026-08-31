@@ -9,6 +9,7 @@
     "url": "https://thepdfmaker.com"
   },
   "homepage": "https://documenter.getpostman.com/view/15968072/2sA35HVzrs#intro",
+  "repository": "https://github.com/PDF-Maker-Automate-Documents/claude-code-plugin",
   "license": "MIT",
   "keywords": ["pdf", "pdf-maker", "documents", "templates", "api"]
 }

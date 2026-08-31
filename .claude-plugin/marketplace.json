@@ -11,7 +11,15 @@
       "name": "pdf-maker",
       "source": "./",
       "description": "Call THE PDF MAKER API from Claude Code: create HTML templates, list templates, read placeholders, check plan usage, and generate PDFs from JSON.",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "repository": "https://github.com/PDF-Maker-Automate-Documents/claude-code-plugin",
+      "keywords": [
+        "pdf",
+        "pdf-maker",
+        "documents",
+        "templates",
+        "api"
+      ]
     }
   ]
 }
